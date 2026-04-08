@@ -520,10 +520,10 @@ body {
 }
 
 #methodology-close {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    background: none;
+    position: sticky;
+    top: 0;
+    float: right;
+    background: rgba(255, 255, 255, 0.9);
     border: none;
     font-size: 28px;
     color: #999;
@@ -531,6 +531,7 @@ body {
     line-height: 1;
     padding: 4px 8px;
     border-radius: 4px;
+    z-index: 1;
 }
 
 #methodology-close:hover {
