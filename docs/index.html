@@ -12,9 +12,15 @@
 
     <!-- Control Panel -->
     <div id="panel">
-        <h1>Medicaid Provider Spending</h1>
-        <p class="subtitle">Per-capita spending by county &amp; HCPCS code</p>
+        <div id="panel-header">
+            <div>
+                <h1>Medicaid Provider Spending</h1>
+                <p class="subtitle">Per-capita spending by county &amp; HCPCS code</p>
+            </div>
+            <button id="panel-toggle" aria-label="Collapse panel">&#9650;</button>
+        </div>
 
+        <div id="panel-body">
         <div class="control-group">
             <label for="hcpcs-input">HCPCS Code</label>
             <div id="hcpcs-search">
@@ -47,6 +53,7 @@
         </div>
         <div id="no-data-msg" class="hidden">
             No spending data is available for the selected code and quarter.
+        </div>
         </div>
     </div>
 

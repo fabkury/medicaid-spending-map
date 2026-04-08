@@ -536,7 +536,21 @@
         });
     }
 
+    // ── Panel collapse ──
+    function setupPanelToggle() {
+        var $panel = document.getElementById("panel");
+        var $toggle = document.getElementById("panel-toggle");
+        if (!$panel || !$toggle) return;
+
+        $toggle.addEventListener("click", function () {
+            $panel.classList.toggle("collapsed");
+        });
+    }
+
     // ── Boot ──
-    document.addEventListener("DOMContentLoaded", setupMethodology);
+    document.addEventListener("DOMContentLoaded", function () {
+        setupMethodology();
+        setupPanelToggle();
+    });
     initMap();
 })();

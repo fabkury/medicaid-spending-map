@@ -34,6 +34,18 @@ body {
     z-index: 10;
 }
 
+#panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+#panel.collapsed #panel-header {
+    margin-bottom: 0;
+}
+
 #panel h1 {
     font-size: 17px;
     font-weight: 700;
@@ -45,7 +57,36 @@ body {
     font-size: 12px;
     color: #666;
     margin-top: 3px;
-    margin-bottom: 16px;
+}
+
+#panel-toggle {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+#panel-toggle:hover {
+    color: #333;
+    background: #f0f0f0;
+}
+
+#panel.collapsed #panel-toggle {
+    transform: rotate(180deg);
+}
+
+#panel-body {
+    transition: none;
+}
+
+#panel.collapsed #panel-body {
+    display: none;
 }
 
 /* ── Controls ── */
