@@ -40,7 +40,7 @@ The `preprocess.py` script transforms the raw spending CSV and reference data in
 1. Extract NPI-to-ZIP mappings from the NPPES registry
 2. Build NPI-to-county lookup via Census ZCTA crosswalk
 3. Aggregate 238M spending rows by county, HCPCS code, and quarter using DuckDB
-4. Filter to the top 15% most popular HCPCS codes (1,668 of 12,263)
+4. Filter to the top 35% most popular HCPCS codes (3,893 of 12,263)
 5. Compute per-capita values and export JSON files
 
 Requirements: Python 3, [DuckDB](https://duckdb.org/)

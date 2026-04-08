@@ -89,10 +89,7 @@ body {
 
 /* Dropdown */
 .dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    position: fixed;
     max-height: 320px;
     overflow-y: auto;
     background: #fff;
@@ -309,6 +306,19 @@ body {
     text-decoration: none;
 }
 
+/* ── No-data message ── */
+#no-data-msg {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: #faf8f0;
+    border: 1px solid #e8e0c8;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+    line-height: 1.4;
+}
+
 /* ── Methodology Overlay ── */
 #methodology-overlay {
     position: fixed;
@@ -403,6 +413,24 @@ body {
     margin: 10px 0;
     font-style: italic;
     border-radius: 0 6px 6px 0;
+}
+
+.methodology-footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e8e8e8;
+    font-size: 13px;
+    color: #777;
+    text-align: center;
+}
+
+.methodology-footer a {
+    color: #4a6cf7;
+    text-decoration: none;
+}
+
+.methodology-footer a:hover {
+    text-decoration: underline;
 }
 
 #methodology-close {

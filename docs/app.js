@@ -27,6 +27,7 @@
     var $legendMax = document.getElementById("legend-max");
     var $tooltip = document.getElementById("tooltip");
     var $loading = document.getElementById("loading");
+    var $noDataMsg = document.getElementById("no-data-msg");
 
     var DATA_BASE = "data/";
 
@@ -270,6 +271,13 @@
     var activeIdx = -1;
     var filtered = [];
 
+    function positionDropdown() {
+        var rect = $input.getBoundingClientRect();
+        $dropdown.style.left = rect.left + "px";
+        $dropdown.style.top = rect.bottom + "px";
+        $dropdown.style.width = rect.width + "px";
+    }
+
     function setupSearch() {
         filtered = codeIndex.codes.slice();
 
@@ -292,6 +300,7 @@
         });
         activeIdx = -1;
         renderDropdown();
+        positionDropdown();
         $dropdown.classList.remove("hidden");
     }
 
@@ -397,8 +406,11 @@
         if (values.length === 0) {
             clearAllStates();
             $legend.classList.add("hidden");
+            $noDataMsg.classList.remove("hidden");
             return;
         }
+
+        $noDataMsg.classList.add("hidden");
 
         // 98th percentile as scale max (caps outliers)
         values.sort(function (a, b) { return a - b; });

@@ -192,8 +192,8 @@ def step2_build_lookups_and_aggregate(con):
 
     r = con.execute("SELECT COUNT(*) FROM hcpcs_popularity").fetchone()
     total_codes = r[0]
-    top_n = max(1, int(total_codes * 0.15))
-    print(f"    {total_codes:,} total HCPCS codes, keeping top {top_n:,} (15%)")
+    top_n = max(1, int(total_codes * 0.35))
+    print(f"    {total_codes:,} total HCPCS codes, keeping top {top_n:,} (35%)")
 
     # Get the top 15% codes
     con.execute(f"""

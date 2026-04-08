@@ -45,6 +45,9 @@
                 <span class="no-data-swatch"></span> No data
             </div>
         </div>
+        <div id="no-data-msg" class="hidden">
+            No spending data is available for the selected code and quarter.
+        </div>
     </div>
 
     <!-- Tooltip -->
@@ -76,7 +79,7 @@
 
             <section>
                 <h3>HCPCS Code Selection</h3>
-                <p>The dataset contains 12,263 unique HCPCS (Healthcare Common Procedure Coding System) codes. To keep the interactive map performant, only the top 15% most popular codes by claim volume are included (1,668 codes). These codes account for the vast majority of all Medicaid claims. Code descriptions are sourced from the CMS 2026 Physician Fee Schedule Relative Value Unit (RVU) file.</p>
+                <p>The dataset contains 12,263 unique HCPCS (Healthcare Common Procedure Coding System) codes. To keep the interactive map performant, only the top 35% most popular codes by claim volume are included (3,893 codes). These codes account for the vast majority of all Medicaid claims. Code descriptions are sourced from the CMS 2026 Physician Fee Schedule Relative Value Unit (RVU) file.</p>
             </section>
 
             <section>
@@ -143,6 +146,11 @@
                     <li>11.1% of claims by volume could not be mapped to a county and are excluded.</li>
                 </ul>
             </section>
+
+            <div class="methodology-footer">
+                Built by <strong>Fabr&iacute;cio Kury</strong> &middot;
+                <a href="https://github.com/fabkury/medicaid-spending-map" target="_blank">GitHub repository</a>
+            </div>
         </div>
     </div>
 
