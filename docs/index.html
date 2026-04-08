@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicaid Spending by County</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Control Panel -->
+    <div id="panel">
+        <h1>Medicaid Provider Spending</h1>
+        <p class="subtitle">Per-capita spending by county &amp; HCPCS code</p>
+
+        <div class="control-group">
+            <label for="hcpcs-input">HCPCS Code</label>
+            <div id="hcpcs-search">
+                <input type="text" id="hcpcs-input" placeholder="Search by code or description..." autocomplete="off">
+                <div id="hcpcs-dropdown" class="dropdown hidden"></div>
+            </div>
+            <div id="hcpcs-selected" class="selected-info hidden"></div>
+        </div>
+
+        <div class="control-group">
+            <label for="quarter-select">Quarter</label>
+            <select id="quarter-select">
+                <option value="">Select a quarter</option>
+            </select>
+        </div>
+
+        <!-- Legend -->
+        <div id="legend" class="hidden">
+            <div class="legend-title">Per-capita spending (USD)</div>
+            <div class="legend-bar">
+                <div id="legend-gradient"></div>
+                <div class="legend-labels">
+                    <span id="legend-min">$0</span>
+                    <span id="legend-max"></span>
+                </div>
+            </div>
+            <div class="legend-note">
+                <span class="no-data-swatch"></span> No data
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="hidden"></div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <span>Loading data...</span>
+    </div>
+
+    <!-- Attribution -->
+    <div id="attribution">
+        Data: <a href="https://opendata.hhs.gov/datasets/medicaid-provider-spending/" target="_blank">HHS/CMS</a>
+        | Population: U.S. Census Bureau
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

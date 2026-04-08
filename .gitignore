@@ -1,0 +1,4 @@
+# Large input/reference data (not needed for the website)
+in/
+__pycache__/
+*.pyc
