@@ -14,6 +14,7 @@
     var allFips = [];
 
     var NO_DATA_COLOR = "#e8e8e8";
+    var hoveredFips = null;
 
     // DOM refs
     var $input = document.getElementById("hcpcs-input");
@@ -162,13 +163,20 @@
                 }
             });
 
-            // Hover outline
+            // Hover outline (driven by feature-state, not filter)
             map.addLayer({
                 id: "county-hover",
                 type: "line",
                 source: "counties",
-                paint: { "line-color": "#1a1a2e", "line-width": 2.5 },
-                filter: ["==", ["get", "fips"], ""]
+                paint: {
+                    "line-color": "#1a1a2e",
+                    "line-width": [
+                        "case",
+                        ["boolean", ["feature-state", "hover"], false],
+                        2.5,
+                        0
+                    ]
+                }
             });
 
             setupHover();
@@ -185,7 +193,13 @@
             map.getCanvas().style.cursor = "pointer";
 
             var fips = e.features[0].properties.fips;
-            map.setFilter("county-hover", ["==", ["get", "fips"], fips]);
+            if (fips !== hoveredFips) {
+                if (hoveredFips) {
+                    map.setFeatureState({ source: "counties", id: hoveredFips }, { hover: false });
+                }
+                hoveredFips = fips;
+                map.setFeatureState({ source: "counties", id: fips }, { hover: true });
+            }
 
             var info = countyInfo[fips];
             var name = info ? info.name : "Unknown";
@@ -221,7 +235,10 @@
 
         map.on("mouseleave", "county-fill", function () {
             map.getCanvas().style.cursor = "";
-            map.setFilter("county-hover", ["==", ["get", "fips"], ""]);
+            if (hoveredFips) {
+                map.setFeatureState({ source: "counties", id: hoveredFips }, { hover: false });
+                hoveredFips = null;
+            }
             $tooltip.classList.add("hidden");
         });
     }
@@ -398,7 +415,7 @@
                 var normalized = Math.min(val / currentMaxVal, 1.0);
                 map.setFeatureState({ source: "counties", id: f }, { v: normalized });
             } else {
-                map.removeFeatureState({ source: "counties", id: f });
+                map.setFeatureState({ source: "counties", id: f }, { v: null });
             }
         }
 
@@ -412,7 +429,7 @@
 
     function clearAllStates() {
         for (var i = 0; i < allFips.length; i++) {
-            map.removeFeatureState({ source: "counties", id: allFips[i] });
+            map.setFeatureState({ source: "counties", id: allFips[i] }, { v: null });
         }
     }
 
