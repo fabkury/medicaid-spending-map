@@ -37,6 +37,14 @@
             </select>
         </div>
 
+        <div class="control-group">
+            <label>View</label>
+            <div id="view-toggle" class="view-toggle">
+                <button class="view-btn active" data-mode="percapita">Per capita</button>
+                <button class="view-btn" data-mode="total">Total</button>
+            </div>
+        </div>
+
         <!-- Legend -->
         <div id="legend" class="hidden">
             <div class="legend-title">Per-capita spending (USD)</div>
@@ -57,8 +65,14 @@
         </div>
     </div>
 
-    <!-- Tooltip -->
+    <!-- Tooltip (desktop hover) -->
     <div id="tooltip" class="hidden"></div>
+
+    <!-- County detail card (click/tap) -->
+    <div id="county-detail" class="hidden">
+        <button id="county-detail-close" aria-label="Close">&times;</button>
+        <div id="county-detail-body"></div>
+    </div>
 
     <!-- Loading overlay -->
     <div id="loading" class="hidden">

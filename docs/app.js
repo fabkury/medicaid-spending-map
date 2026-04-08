@@ -10,6 +10,7 @@
     var codeDataCache = {};     // { code: { fips: [val, ...], ... }, ... }
     var currentQuarterIdx = -1;
     var currentMaxVal = 1;
+    var viewMode = "percapita"; // "percapita" or "total"
     var map = null;
     var allFips = [];
 
@@ -28,6 +29,9 @@
     var $tooltip = document.getElementById("tooltip");
     var $loading = document.getElementById("loading");
     var $noDataMsg = document.getElementById("no-data-msg");
+    var $detail = document.getElementById("county-detail");
+    var $detailBody = document.getElementById("county-detail-body");
+    var $detailClose = document.getElementById("county-detail-close");
 
     var DATA_BASE = "data/";
 
@@ -181,6 +185,7 @@
             });
 
             setupHover();
+            setupCountyClick();
             populateQuarters();
             setupSearch();
             hideLoading();
@@ -209,10 +214,11 @@
 
             var valueHTML = "";
             if (selectedCodes.length > 0 && currentQuarterIdx >= 0) {
-                var val = getMergedValue(fips, currentQuarterIdx);
+                var val = getDisplayValue(fips, currentQuarterIdx);
+                var label = viewMode === "total" ? "total &middot; pop. " + pop : "per capita &middot; pop. " + pop;
                 valueHTML =
                     '<div class="tooltip-value">' + formatCurrency(val) + '</div>' +
-                    '<div class="tooltip-label">per capita &middot; pop. ' + pop + '</div>';
+                    '<div class="tooltip-label">' + label + '</div>';
             }
 
             $tooltip.innerHTML =
@@ -241,6 +247,88 @@
             }
             $tooltip.classList.add("hidden");
         });
+    }
+
+    // ── County detail card (click/tap) ──
+    var detailFips = null;
+
+    function setupCountyClick() {
+        map.on("click", "county-fill", function (e) {
+            if (!e.features || !e.features.length) return;
+            var fips = e.features[0].properties.fips;
+            showCountyDetail(fips);
+        });
+
+        $detailClose.addEventListener("click", function () {
+            $detail.classList.add("hidden");
+            detailFips = null;
+        });
+    }
+
+    function showCountyDetail(fips) {
+        detailFips = fips;
+        var info = countyInfo[fips];
+        var name = info ? info.name : "Unknown";
+        var state = info ? info.state : "";
+        var pop = info ? info.pop : 0;
+
+        var html =
+            '<div class="detail-header">' +
+            '<div class="detail-county">' + escapeHTML(name) + '</div>' +
+            '<div class="detail-state">' + escapeHTML(state) + '</div>' +
+            '<div class="detail-pop">Population: ' + pop.toLocaleString() + '</div>' +
+            '</div>';
+
+        if (selectedCodes.length > 0 && currentQuarterIdx >= 0) {
+            var qLabel = formatQuarterLabel(codeIndex.quarters[currentQuarterIdx]);
+            html += '<table class="detail-table"><thead><tr>' +
+                '<th>Code</th><th>Description</th><th>Per capita</th><th>Total</th>' +
+                '</tr></thead><tbody>';
+
+            var grandPerCapita = 0;
+            var grandTotal = 0;
+            var hasAny = false;
+
+            for (var i = 0; i < selectedCodes.length; i++) {
+                var c = selectedCodes[i];
+                var data = codeDataCache[c.code];
+                var arr = data ? data[fips] : null;
+                var val = arr ? arr[currentQuarterIdx] : null;
+                var total = (val != null && pop > 0) ? val * pop : null;
+
+                if (val != null) {
+                    grandPerCapita += val;
+                    grandTotal += total;
+                    hasAny = true;
+                }
+
+                html +=
+                    '<tr>' +
+                    '<td class="code-col">' + escapeHTML(c.code) + '</td>' +
+                    '<td class="desc-col">' + escapeHTML(c.desc || "No description") + '</td>' +
+                    '<td>' + formatCurrency(val) + '</td>' +
+                    '<td>' + (total != null ? formatCurrency(total) : "No data") + '</td>' +
+                    '</tr>';
+            }
+
+            if (selectedCodes.length > 1 && hasAny) {
+                html +=
+                    '<tr class="total-row">' +
+                    '<td colspan="2">Total (' + selectedCodes.length + ' codes)</td>' +
+                    '<td>' + formatCurrency(grandPerCapita) + '</td>' +
+                    '<td>' + formatCurrency(grandTotal) + '</td>' +
+                    '</tr>';
+            }
+
+            html += '</tbody></table>';
+        } else if (selectedCodes.length === 0) {
+            html += '<div class="detail-no-data">Select an HCPCS code and quarter to see spending data.</div>';
+        } else {
+            html += '<div class="detail-no-data">Select a quarter to see spending data.</div>';
+        }
+
+        $detailBody.innerHTML = html;
+        $detail.classList.remove("hidden");
     }
 
     // ── Quarter selector ──
@@ -441,7 +529,7 @@
         }
     }
 
-    function getMergedValue(fips, quarterIdx) {
+    function getMergedPerCapita(fips, quarterIdx) {
         var sum = null;
         for (var i = 0; i < selectedCodes.length; i++) {
             var data = codeDataCache[selectedCodes[i].code];
@@ -455,15 +543,26 @@
         return sum;
     }
 
+    function getDisplayValue(fips, quarterIdx) {
+        var pc = getMergedPerCapita(fips, quarterIdx);
+        if (pc == null) return null;
+        if (viewMode === "total") {
+            var info = countyInfo[fips];
+            var pop = info ? info.pop : 0;
+            return pc * pop;
+        }
+        return pc;
+    }
+
     // ── Update map via feature-state ──
     function updateMap() {
         if (!map || !map.getSource("counties")) return;
         if (selectedCodes.length === 0 || currentQuarterIdx < 0) return;
 
-        // Collect merged non-null positive values to determine scale
+        // Collect display values to determine scale
         var values = [];
         for (var i = 0; i < allFips.length; i++) {
-            var v = getMergedValue(allFips[i], currentQuarterIdx);
+            var v = getDisplayValue(allFips[i], currentQuarterIdx);
             if (v != null && v > 0) values.push(v);
         }
 
@@ -484,7 +583,7 @@
         // Set feature-state "v" for each county (0-1 normalized)
         for (var i = 0; i < allFips.length; i++) {
             var f = allFips[i];
-            var val = getMergedValue(f, currentQuarterIdx);
+            var val = getDisplayValue(f, currentQuarterIdx);
 
             if (val != null && val >= 0) {
                 var normalized = Math.min(val / currentMaxVal, 1.0);
@@ -498,8 +597,12 @@
         $legend.classList.remove("hidden");
         $legendGradient.style.background =
             "linear-gradient(to right, #f7fbff, #d0e1f2, #94c4df, #4a98c9, #2070b4, #08519c, #08306b, #041733)";
+        var $legendTitle = document.querySelector(".legend-title");
+        if ($legendTitle) $legendTitle.textContent = viewMode === "total" ? "Total spending (USD)" : "Per-capita spending (USD)";
         $legendMin.textContent = "$0";
         $legendMax.textContent = formatCurrency(currentMaxVal);
+
+        if (detailFips) showCountyDetail(detailFips);
     }
 
     function clearAllStates() {
@@ -536,6 +639,23 @@
         });
     }
 
+    // ── View toggle ──
+    function setupViewToggle() {
+        var btns = document.querySelectorAll("#view-toggle .view-btn");
+        for (var i = 0; i < btns.length; i++) {
+            (function (btn) {
+                btn.addEventListener("click", function () {
+                    if (btn.dataset.mode === viewMode) return;
+                    viewMode = btn.dataset.mode;
+                    for (var j = 0; j < btns.length; j++) {
+                        btns[j].classList.toggle("active", btns[j].dataset.mode === viewMode);
+                    }
+                    updateMap();
+                });
+            })(btns[i]);
+        }
+    }
+
     // ── Panel collapse ──
     function setupPanelToggle() {
         var $panel = document.getElementById("panel");
@@ -551,6 +671,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         setupMethodology();
         setupPanelToggle();
+        setupViewToggle();
     });
     initMap();
 })();
