@@ -433,6 +433,35 @@
         }
     }
 
+    // ── Methodology overlay ──
+    function setupMethodology() {
+        var $overlay = document.getElementById("methodology-overlay");
+        var $link = document.getElementById("methodology-link");
+        var $close = document.getElementById("methodology-close");
+
+        if (!$link || !$overlay || !$close) return;
+
+        $link.addEventListener("click", function (e) {
+            e.preventDefault();
+            $overlay.classList.remove("hidden");
+        });
+
+        $close.addEventListener("click", function () {
+            $overlay.classList.add("hidden");
+        });
+
+        $overlay.addEventListener("click", function (e) {
+            if (e.target === $overlay) $overlay.classList.add("hidden");
+        });
+
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && !$overlay.classList.contains("hidden")) {
+                $overlay.classList.add("hidden");
+            }
+        });
+    }
+
     // ── Boot ──
+    document.addEventListener("DOMContentLoaded", setupMethodology);
     initMap();
 })();

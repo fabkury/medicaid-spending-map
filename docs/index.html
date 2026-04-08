@@ -60,6 +60,90 @@
     <div id="attribution">
         Data: <a href="https://opendata.hhs.gov/datasets/medicaid-provider-spending/" target="_blank">HHS/CMS</a>
         | Population: U.S. Census Bureau
+        | <a href="#" id="methodology-link">Methodology</a>
+    </div>
+
+    <!-- Methodology overlay -->
+    <div id="methodology-overlay" class="hidden">
+        <div id="methodology-panel">
+            <button id="methodology-close" aria-label="Close">&times;</button>
+            <h2>Methodology</h2>
+
+            <section>
+                <h3>Data Source</h3>
+                <p>This map visualizes the <a href="https://opendata.hhs.gov/datasets/medicaid-provider-spending/" target="_blank">Medicaid Provider Spending</a> dataset published by the U.S. Department of Health &amp; Human Services (HHS), Centers for Medicare &amp; Medicaid Services (CMS). The dataset contains 238 million rows covering 21.8 billion claim lines from January 2018 through December 2024, representing approximately $21.8 trillion in total Medicaid payments. Each row aggregates claims by billing provider, servicing provider, HCPCS code, and month.</p>
+            </section>
+
+            <section>
+                <h3>HCPCS Code Selection</h3>
+                <p>The dataset contains 12,263 unique HCPCS (Healthcare Common Procedure Coding System) codes. To keep the interactive map performant, only the top 15% most popular codes by claim volume are included (1,668 codes). These codes account for the vast majority of all Medicaid claims. Code descriptions are sourced from the CMS 2026 Physician Fee Schedule Relative Value Unit (RVU) file.</p>
+            </section>
+
+            <section>
+                <h3>Mapping Providers to Counties</h3>
+                <p>The spending dataset identifies providers by National Provider Identifier (NPI) numbers but does not include geographic information. To map spending to counties, a three-step lookup is performed:</p>
+                <ol>
+                    <li><strong>NPI &rarr; ZIP code:</strong> Each NPI is linked to its 5-digit practice location ZIP code using the <a href="https://download.cms.gov/nppes/NPI_Files.html" target="_blank">NPPES (National Plan and Provider Enumeration System)</a> registry. This yielded 9.1 million NPI-to-ZIP mappings.</li>
+                    <li><strong>ZIP code &rarr; County FIPS:</strong> ZIP codes are mapped to county FIPS codes using the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.2020.html" target="_blank">Census Bureau ZCTA-to-County Relationship File</a>. When a ZIP code spans multiple counties, the county with the largest land area overlap is selected.</li>
+                    <li><strong>County FIPS &rarr; Map polygon:</strong> County boundaries are rendered using the U.S. Census Bureau's cartographic boundary shapefiles (2020 vintage, simplified to 1:10m resolution via TopoJSON).</li>
+                </ol>
+            </section>
+
+            <section>
+                <h3>Billing vs. Servicing NPI</h3>
+                <p>Each row in the spending dataset may contain two NPI numbers:</p>
+                <ul>
+                    <li><strong>Billing NPI</strong> &mdash; the entity that submitted the claim (present in 96.7% of rows, covering 87.4% of claims).</li>
+                    <li><strong>Servicing NPI</strong> &mdash; the provider who delivered the service (present in 96.2% of rows, covering 83.1% of claims).</li>
+                    <li><strong>Both NPIs present</strong> &mdash; 93.0% of rows (80.0% of claims) have both.</li>
+                </ul>
+                <p>For geographic assignment, the <strong>servicing provider&rsquo;s</strong> location is used when available, with the billing provider&rsquo;s location as a fallback. This reflects where the care was delivered rather than where the claim was filed.</p>
+
+                <h4>ZIP Code Agreement</h4>
+                <p>Among the 218 million rows where both NPIs could be resolved to a ZIP code via NPPES:</p>
+                <ul>
+                    <li><strong>61.3%</strong> of rows (76.5% of claims) had identical billing and servicing ZIP codes.</li>
+                    <li><strong>38.7%</strong> of rows (23.5% of claims) had different ZIP codes.</li>
+                    <li>Even when ZIP codes differed, <strong>74.3%</strong> of rows (84.6% of claims) mapped to the <strong>same county</strong>, since multiple ZIP codes often fall within a single county.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>County Resolution Rate</h3>
+                <p>Using the servicing-then-billing NPI fallback strategy:</p>
+                <ul>
+                    <li><strong>98.8%</strong> of rows (88.9% of claims) were successfully mapped to a county.</li>
+                    <li>The remaining 1.2% of rows (11.1% of claims) could not be geolocated because neither NPI was found in the NPPES registry or the associated ZIP code did not appear in the Census ZCTA crosswalk. These claims are excluded from the map.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>Per-Capita Calculation</h3>
+                <p>Dollar values on the map are <strong>per-capita</strong> amounts, computed as:</p>
+                <div class="formula">Per-capita spending = Total paid in county for code &amp; quarter &divide; County population</div>
+                <p>The <code>TOTAL_PAID</code> field from the spending dataset is summed by county, HCPCS code, and calendar quarter. County population estimates come from the <a href="https://www.census.gov/data/datasets/time-series/demo/popest/2020s-counties-total.html" target="_blank">U.S. Census Bureau&rsquo;s 2024 population estimates</a> (co-est2025-alldata). A single population figure (2024 estimate) is used across all quarters.</p>
+            </section>
+
+            <section>
+                <h3>Quarterly Aggregation</h3>
+                <p>The source data is monthly. Claims are grouped into calendar quarters (Q1 = Jan&ndash;Mar, Q2 = Apr&ndash;Jun, Q3 = Jul&ndash;Sep, Q4 = Oct&ndash;Dec) based on the <code>CLAIM_FROM_MONTH</code> field. The dataset spans Q1 2018 through Q4 2024 (28 quarters).</p>
+            </section>
+
+            <section>
+                <h3>Color Scale</h3>
+                <p>The choropleth uses a sequential blue color scale with linear interpolation. To prevent extreme outliers from compressing the visible color range, the scale maximum is set at the <strong>98th percentile</strong> of per-capita values across all counties for the selected code and quarter. Counties above this threshold are shown in the darkest blue. Counties with no data for the selected code/quarter are shown in gray.</p>
+            </section>
+
+            <section>
+                <h3>Limitations</h3>
+                <ul>
+                    <li>Provider location is used as a proxy for where services were delivered. In some cases (e.g., telehealth, lab services), the provider&rsquo;s registered address may differ from the patient&rsquo;s location.</li>
+                    <li>When a ZIP code spans multiple counties, only the county with the largest land-area overlap is used, which may misattribute some spending near county borders.</li>
+                    <li>A fixed 2024 population estimate is used for all quarters (2018&ndash;2024), which does not account for population changes over time.</li>
+                    <li>11.1% of claims by volume could not be mapped to a county and are excluded.</li>
+                </ul>
+            </section>
+        </div>
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
