@@ -427,7 +427,8 @@ body {
     padding: 36px 40px;
     max-width: 720px;
     width: calc(100% - 40px);
-    max-height: calc(100vh - 60px);
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     overflow-y: auto;
     line-height: 1.6;
     color: #333;
@@ -559,5 +560,13 @@ body {
     #panel {
         width: calc(100% - 24px);
         max-height: 50vh;
+    }
+
+    #methodology-panel {
+        padding: 24px 20px;
+        width: calc(100% - 20px);
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        border-radius: 8px;
     }
 }
