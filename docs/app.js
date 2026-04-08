@@ -6,8 +6,8 @@
     var countyInfo = null;      // { fips: { name, state, pop }, ... }
     var countyGeoJSON = null;
     var stateGeoJSON = null;
-    var currentCodeData = null; // { fips: [val, val, ...], ... }
-    var currentCode = null;
+    var selectedCodes = [];     // [{ code, desc, claims, pct }, ...]
+    var codeDataCache = {};     // { code: { fips: [val, ...], ... }, ... }
     var currentQuarterIdx = -1;
     var currentMaxVal = 1;
     var map = null;
@@ -208,9 +208,8 @@
             var pop = info ? info.pop.toLocaleString() : "N/A";
 
             var valueHTML = "";
-            if (currentCodeData && currentQuarterIdx >= 0) {
-                var vals = currentCodeData[fips];
-                var val = vals ? vals[currentQuarterIdx] : null;
+            if (selectedCodes.length > 0 && currentQuarterIdx >= 0) {
+                var val = getMergedValue(fips, currentQuarterIdx);
                 valueHTML =
                     '<div class="tooltip-value">' + formatCurrency(val) + '</div>' +
                     '<div class="tooltip-label">per capita &middot; pop. ' + pop + '</div>';
@@ -328,9 +327,10 @@
         var html = "";
         for (var i = 0; i < items.length; i++) {
             var c = items[i];
+            var sel = isCodeSelected(c.code);
             html +=
-                '<div class="dropdown-item' + (i === activeIdx ? " active" : "") + '" data-idx="' + i + '">' +
-                '<div class="code">' + escapeHTML(c.code) + '</div>' +
+                '<div class="dropdown-item' + (i === activeIdx ? " active" : "") + (sel ? " selected" : "") + '" data-idx="' + i + '">' +
+                '<div class="code">' + escapeHTML(c.code) + (sel ? ' <span class="check">&#10003;</span>' : '') + '</div>' +
                 '<div class="desc">' + escapeHTML(c.desc || "No description") + '</div>' +
                 '<div class="meta">' + formatClaims(c.claims) + ' claims (' + c.pct + '%)</div>' +
                 '</div>';
@@ -361,45 +361,109 @@
         if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: "nearest" });
     }
 
+    function isCodeSelected(code) {
+        for (var i = 0; i < selectedCodes.length; i++) {
+            if (selectedCodes[i].code === code) return true;
+        }
+        return false;
+    }
+
     function selectCode(codeObj) {
         $dropdown.classList.add("hidden");
-        $input.value = codeObj.code;
-        currentCode = codeObj.code;
+        $input.value = "";
 
-        $selected.innerHTML =
-            '<span class="code-label">' + escapeHTML(codeObj.code) + '</span> &mdash; ' +
-            escapeHTML(codeObj.desc || "No description") + '<br>' +
-            '<small>' + formatClaims(codeObj.claims) + ' claims (' + codeObj.pct + '% of all)</small>';
-        $selected.classList.remove("hidden");
+        if (isCodeSelected(codeObj.code)) return;
+        selectedCodes.push(codeObj);
+        renderSelectedCodes();
 
         if ($quarterSelect.value === "") {
             $quarterSelect.value = codeIndex.quarters.length - 1;
             currentQuarterIdx = codeIndex.quarters.length - 1;
         }
 
+        if (codeDataCache[codeObj.code]) {
+            updateMap();
+            return;
+        }
+
         showLoading();
-        fetchJSON(DATA_BASE + encodeURIComponent(currentCode) + ".json")
+        fetchJSON(DATA_BASE + encodeURIComponent(codeObj.code) + ".json")
             .then(function (data) {
-                currentCodeData = data;
+                codeDataCache[codeObj.code] = data;
                 hideLoading();
                 updateMap();
             })
             .catch(function (err) {
-                console.error("Failed to load data for", currentCode, err);
-                currentCodeData = null;
+                console.error("Failed to load data for", codeObj.code, err);
                 hideLoading();
             });
+    }
+
+    function removeCode(code) {
+        selectedCodes = selectedCodes.filter(function (c) { return c.code !== code; });
+        delete codeDataCache[code];
+        renderSelectedCodes();
+        if (selectedCodes.length === 0) {
+            clearAllStates();
+            $legend.classList.add("hidden");
+            $noDataMsg.classList.add("hidden");
+        } else {
+            updateMap();
+        }
+    }
+
+    function renderSelectedCodes() {
+        if (selectedCodes.length === 0) {
+            $selected.classList.add("hidden");
+            $selected.innerHTML = "";
+            return;
+        }
+        var html = "";
+        for (var i = 0; i < selectedCodes.length; i++) {
+            var c = selectedCodes[i];
+            html +=
+                '<div class="code-chip">' +
+                '<span class="code-chip-label">' + escapeHTML(c.code) + '</span>' +
+                '<span class="code-chip-desc">' + escapeHTML(c.desc || "No description") + '</span>' +
+                '<button class="code-chip-remove" data-code="' + escapeHTML(c.code) + '" aria-label="Remove">&times;</button>' +
+                '</div>';
+        }
+        $selected.innerHTML = html;
+        $selected.classList.remove("hidden");
+
+        var btns = $selected.querySelectorAll(".code-chip-remove");
+        for (var j = 0; j < btns.length; j++) {
+            (function (btn) {
+                btn.addEventListener("click", function () {
+                    removeCode(btn.dataset.code);
+                });
+            })(btns[j]);
+        }
+    }
+
+    function getMergedValue(fips, quarterIdx) {
+        var sum = null;
+        for (var i = 0; i < selectedCodes.length; i++) {
+            var data = codeDataCache[selectedCodes[i].code];
+            if (!data) continue;
+            var arr = data[fips];
+            var val = arr ? arr[quarterIdx] : null;
+            if (val != null) {
+                sum = (sum || 0) + val;
+            }
+        }
+        return sum;
     }
 
     // ── Update map via feature-state ──
     function updateMap() {
         if (!map || !map.getSource("counties")) return;
-        if (!currentCodeData || currentQuarterIdx < 0) return;
+        if (selectedCodes.length === 0 || currentQuarterIdx < 0) return;
 
-        // Collect non-null positive values to determine scale
+        // Collect merged non-null positive values to determine scale
         var values = [];
-        for (var fips in currentCodeData) {
-            var v = currentCodeData[fips][currentQuarterIdx];
+        for (var i = 0; i < allFips.length; i++) {
+            var v = getMergedValue(allFips[i], currentQuarterIdx);
             if (v != null && v > 0) values.push(v);
         }
 
@@ -420,8 +484,7 @@
         // Set feature-state "v" for each county (0-1 normalized)
         for (var i = 0; i < allFips.length; i++) {
             var f = allFips[i];
-            var arr = currentCodeData[f];
-            var val = arr ? arr[currentQuarterIdx] : null;
+            var val = getMergedValue(f, currentQuarterIdx);
 
             if (val != null && val >= 0) {
                 var normalized = Math.min(val / currentMaxVal, 1.0);
