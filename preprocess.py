@@ -192,10 +192,11 @@ def step2_build_lookups_and_aggregate(con):
 
     r = con.execute("SELECT COUNT(*) FROM hcpcs_popularity").fetchone()
     total_codes = r[0]
-    top_n = max(1, int(total_codes * 0.35))
+    top_n_percent = 35
+    top_n = max(1, int(total_codes * (top_n_percent/100)))
     print(f"    {total_codes:,} total HCPCS codes, keeping top {top_n:,} (35%)")
 
-    # Get the top 15% codes
+    # Get the top top_n_percent% codes
     con.execute(f"""
         CREATE TABLE top_codes AS
         SELECT HCPCS_CODE, total_claims, total_paid
@@ -212,7 +213,7 @@ def step2_build_lookups_and_aggregate(con):
         SEMI JOIN top_codes t ON a.HCPCS_CODE = t.HCPCS_CODE
     """)
     r = con.execute("SELECT COUNT(*) FROM spending_top").fetchone()
-    print(f"    {r[0]:,} rows after filtering to top 15% codes")
+    print(f"    {r[0]:,} rows after filtering to top {top_n_percent}% codes")
 
     return top_n
 
