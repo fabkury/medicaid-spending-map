@@ -139,8 +139,61 @@
                 <p>Using the servicing-then-billing NPI fallback strategy:</p>
                 <ul>
                     <li><strong>98.8%</strong> of rows (88.9% of claims) were successfully mapped to a county.</li>
-                    <li>The remaining 1.2% of rows (11.1% of claims) could not be geolocated because neither NPI was found in the NPPES registry or the associated ZIP code did not appear in the Census ZCTA crosswalk. These claims are excluded from the map.</li>
+                    <li>The remaining <strong>1.2%</strong> of rows (<strong>11.1%</strong> of claims &mdash; 2.4 billion claim lines across 2.8 million rows) could not be geolocated and are excluded from the map.</li>
                 </ul>
+
+                <h4>Why Mapping Fails</h4>
+                <p>The unmapped claims fall into four failure categories in the NPI &rarr; ZIP &rarr; County lookup chain:</p>
+                <table class="methodology-table">
+                    <thead>
+                        <tr><th>Failure reason</th><th>% of unmapped claims</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Both NPI fields empty</strong></td>
+                            <td>85.1%</td>
+                            <td>Neither billing nor servicing NPI is populated. These are high-volume aggregated rows (averaging ~7,500 claims each) that represent managed care organization (MCO) bulk-reported claims where individual providers are not identified.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NPIs not found in NPPES</strong></td>
+                            <td>7.4%</td>
+                            <td>NPI values are present but do not appear in the NPPES registry. These include placeholder values (e.g., &ldquo;0000000000&rdquo;), atypical identifiers beginning with letters, and state Medicaid agency codes that are not standard NPI numbers.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ZIP codes not in Census ZCTA crosswalk</strong></td>
+                            <td>5.6%</td>
+                            <td>NPIs resolve to valid ZIP codes in NPPES, but 812 of those ZIP codes do not appear in the Census ZCTA-to-County relationship file. These are predominantly institutional or campus ZIP codes assigned by USPS to large organizations (e.g., 44195 &mdash; Cleveland Clinic, 94143 &mdash; UCSF, 01199 &mdash; Brigham&nbsp;&amp;&nbsp;Women&rsquo;s, 84132 &mdash; University of Utah Health) that have no corresponding residential ZCTA.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mixed failures</strong></td>
+                            <td>2.0%</td>
+                            <td>One NPI is absent from NPPES while the other&rsquo;s ZIP code is not in the crosswalk, so neither path yields a county.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h3>Profile of Unmapped Claims</h3>
+                <p>Although the 2.4 billion unmapped claim lines cannot be placed on the map, they reveal distinctive patterns about what types of Medicaid services fall outside the NPI-based geolocation chain.</p>
+
+                <h4>Service Categories</h4>
+                <p>The unmapped claims are dominated by services that operate outside the traditional healthcare facility model:</p>
+                <ul>
+                    <li><strong>Home &amp; Community-Based Services (HCBS):</strong> Personal care (T1019 &mdash; 276M unmapped claims, 19.6% of that code&rsquo;s total), homemaker services (S5130 &mdash; 56.2% unmapped), attendant care (S5125), residential habilitation (T2016), assisted living waiver (T2031), and adult foster care (S5140). These services are often delivered by individual caregivers or small agencies that may not carry standard NPI registrations.</li>
+                    <li><strong>Non-Emergency Medical Transportation (NEMT):</strong> Taxi (A0100 &mdash; 36.0% unmapped), encounter/trip (T2003 &mdash; 44.4%), mileage (S0215 &mdash; 52.3%), mini-bus (A0120 &mdash; 50.4%), and wheelchair van (A0130 &mdash; 29.0%). Transportation companies frequently bill through managed care intermediaries or state-specific identifiers.</li>
+                    <li><strong>State-specific service codes:</strong> Codes with non-standard prefixes (W, Z, SA, and numeric-alpha blends such as W1793, Z9525, 1286Z) represent state-defined waiver services. Several of these codes have 100% unmapped rates, indicating that the corresponding providers exclusively use non-NPI identifiers.</li>
+                </ul>
+
+                <h4>Claim Structure</h4>
+                <p>Unmapped rows are structurally different from mapped rows:</p>
+                <ul>
+                    <li>Unmapped rows average <strong>865 claim lines per row</strong>, compared to 79&ndash;149 for mapped rows. The &ldquo;both NPI empty&rdquo; subset averages ~7,500 claims per row, confirming these are bulk aggregations rather than individual-provider records.</li>
+                    <li>The <code>TOTAL_PAID</code> field in unmapped rows exhibits extreme outliers &mdash; a small number of rows (concentrated in 2018) carry implausibly large dollar values that account for the vast majority of the dataset&rsquo;s nominal dollar total. Because of this, dollar-based statistics for unmapped claims are unreliable and are not reported here. The per-capita spending values shown on the map (derived from mapped claims only) are not affected.</li>
+                </ul>
+
+                <h4>Trend Over Time</h4>
+                <p>The share of unmapped claims has gradually declined from <strong>12.9%</strong> in 2018 to <strong>10.4&ndash;11.4%</strong> in 2022&ndash;2024, suggesting improving coverage of the NPPES provider registry over time.</p>
             </section>
 
             <section>
@@ -166,7 +219,7 @@
                     <li>Provider location is used as a proxy for where services were delivered. In some cases (e.g., telehealth, lab services), the provider&rsquo;s registered address may differ from the patient&rsquo;s location.</li>
                     <li>When a ZIP code spans multiple counties, only the county with the largest land-area overlap is used, which may misattribute some spending near county borders.</li>
                     <li>A fixed 2024 population estimate is used for all quarters (2018&ndash;2024), which does not account for population changes over time.</li>
-                    <li>11.1% of claims by volume could not be mapped to a county and are excluded.</li>
+                    <li>11.1% of claims by volume could not be mapped to a county and are excluded. These are predominantly managed care bulk claims without provider NPIs, HCBS waiver services, and non-emergency transportation &mdash; see <em>County Resolution Rate</em> and <em>Profile of Unmapped Claims</em> above for details.</li>
                 </ul>
             </section>
 

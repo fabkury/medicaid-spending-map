@@ -699,6 +699,32 @@ body {
     border-radius: 0 6px 6px 0;
 }
 
+.methodology-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+}
+
+.methodology-table th,
+.methodology-table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.methodology-table th {
+    background: #f5f7fa;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.methodology-table td:nth-child(2) {
+    text-align: center;
+    white-space: nowrap;
+}
+
 .methodology-footer {
     margin-top: 24px;
     padding-top: 16px;
