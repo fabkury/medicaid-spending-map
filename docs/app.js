@@ -32,6 +32,7 @@
     var $detail = document.getElementById("county-detail");
     var $detailBody = document.getElementById("county-detail-body");
     var $detailClose = document.getElementById("county-detail-close");
+    var $exportBtn = document.getElementById("export-csv");
 
     var DATA_BASE = "data/";
 
@@ -495,6 +496,7 @@
             clearAllStates();
             $legend.classList.add("hidden");
             $noDataMsg.classList.add("hidden");
+            updateExportBtn();
         } else {
             updateMap();
         }
@@ -570,6 +572,7 @@
             clearAllStates();
             $legend.classList.add("hidden");
             $noDataMsg.classList.remove("hidden");
+            $exportBtn.disabled = true;
             return;
         }
 
@@ -603,6 +606,7 @@
         $legendMax.textContent = formatCurrency(currentMaxVal);
 
         if (detailFips) showCountyDetail(detailFips);
+        updateExportBtn();
     }
 
     function clearAllStates() {
@@ -667,11 +671,115 @@
         });
     }
 
+    // ── CSV Export ──
+    function hashCodesFNV(codes) {
+        var str = codes.slice().sort().join(",");
+        var hash = 0x811c9dc5;
+        for (var i = 0; i < str.length; i++) {
+            hash ^= str.charCodeAt(i);
+            hash = Math.imul(hash, 0x01000193);
+        }
+        return (hash >>> 0).toString(16).padStart(8, "0").slice(0, 6);
+    }
+
+    function updateExportBtn() {
+        $exportBtn.disabled = !(selectedCodes.length > 0 && currentQuarterIdx >= 0);
+    }
+
+    function exportCSV() {
+        if (selectedCodes.length === 0 || currentQuarterIdx < 0) return;
+
+        var codes = selectedCodes.map(function (c) { return c.code; });
+        var qi = currentQuarterIdx;
+        var isTotal = viewMode === "total";
+        var modeLabel = isTotal ? "total" : "per_capita";
+
+        // Build rows: only counties with data for at least one selected code
+        var rows = [];
+        for (var i = 0; i < allFips.length; i++) {
+            var fips = allFips[i];
+            var info = countyInfo[fips];
+            if (!info) continue;
+
+            var hasAny = false;
+            var codeVals = [];
+            var total = 0;
+
+            for (var j = 0; j < codes.length; j++) {
+                var data = codeDataCache[codes[j]];
+                var arr = data ? data[fips] : null;
+                var pc = arr ? arr[qi] : null;
+                var val = null;
+                if (pc != null) {
+                    val = isTotal ? Math.round(pc * info.pop * 100) / 100 : pc;
+                    total = Math.round((total + val) * 100) / 100;
+                    hasAny = true;
+                }
+                codeVals.push(val);
+            }
+
+            if (!hasAny) continue;
+
+            rows.push({
+                fips: fips,
+                name: info.name,
+                state: info.state,
+                pop: info.pop,
+                codeVals: codeVals,
+                total: total
+            });
+        }
+
+        // Assemble CSV
+        var header = ["county_fips", "county_name", "state", "population"];
+        for (var j = 0; j < codes.length; j++) {
+            header.push(codes[j]);
+        }
+        if (codes.length > 1) header.push("total");
+
+        var lines = [header.join(",")];
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var line = [
+                r.fips,
+                '"' + r.name.replace(/"/g, '""') + '"',
+                '"' + r.state.replace(/"/g, '""') + '"',
+                r.pop
+            ];
+            for (var j = 0; j < r.codeVals.length; j++) {
+                line.push(r.codeVals[j] != null ? r.codeVals[j] : "");
+            }
+            if (codes.length > 1) line.push(r.total);
+            lines.push(line.join(","));
+        }
+
+        var csv = lines.join("\n");
+        var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+
+        var slug = codes.length === 1 ? codes[0] : hashCodesFNV(codes);
+        var quarter = codeIndex.quarters[qi];
+        var filename = "medicaid-spending-" + modeLabel + "-" + slug + "-" + quarter + ".csv";
+
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function setupExport() {
+        $exportBtn.addEventListener("click", exportCSV);
+    }
+
     // ── Boot ──
     document.addEventListener("DOMContentLoaded", function () {
         setupMethodology();
         setupPanelToggle();
         setupViewToggle();
+        setupExport();
     });
     initMap();
 })();

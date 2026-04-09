@@ -563,6 +563,32 @@ body {
     background: #f0f4ff;
 }
 
+/* ── Export button ── */
+.export-btn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 10px 0;
+    background: #4a6cf7;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.export-btn:hover:not(:disabled) {
+    background: #3a5ce5;
+}
+
+.export-btn:disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+
 /* ── No-data message ── */
 #no-data-msg {
     margin-top: 16px;
