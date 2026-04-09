@@ -216,7 +216,7 @@
             var valueHTML = "";
             if (selectedCodes.length > 0 && currentQuarterIdx >= 0) {
                 var val = getDisplayValue(fips, currentQuarterIdx);
-                var label = viewMode === "total" ? "total &middot; pop. " + pop : "per capita &middot; pop. " + pop;
+                var label = viewMode === "total" ? "total &middot; " + pop + " enrollees" : "per enrollee &middot; " + pop + " enrollees";
                 valueHTML =
                     '<div class="tooltip-value">' + formatCurrency(val) + '</div>' +
                     '<div class="tooltip-label">' + label + '</div>';
@@ -273,17 +273,20 @@
         var state = info ? info.state : "";
         var pop = info ? info.pop : 0;
 
+        var tpop = info ? info.tpop : 0;
+
         var html =
             '<div class="detail-header">' +
             '<div class="detail-county">' + escapeHTML(name) + '</div>' +
             '<div class="detail-state">' + escapeHTML(state) + '</div>' +
-            '<div class="detail-pop">Population: ' + pop.toLocaleString() + '</div>' +
+            '<div class="detail-pop">Medicaid enrollment: ' + pop.toLocaleString() +
+            ' &middot; Total population: ' + tpop.toLocaleString() + '</div>' +
             '</div>';
 
         if (selectedCodes.length > 0 && currentQuarterIdx >= 0) {
             var qLabel = formatQuarterLabel(codeIndex.quarters[currentQuarterIdx]);
             html += '<table class="detail-table"><thead><tr>' +
-                '<th>Code</th><th>Description</th><th>Per capita</th><th>Total</th>' +
+                '<th>Code</th><th>Description</th><th>Per enrollee</th><th>Total</th>' +
                 '</tr></thead><tbody>';
 
             var grandPerCapita = 0;
@@ -601,7 +604,7 @@
         $legendGradient.style.background =
             "linear-gradient(to right, #f7fbff, #d0e1f2, #94c4df, #4a98c9, #2070b4, #08519c, #08306b, #041733)";
         var $legendTitle = document.querySelector(".legend-title");
-        if ($legendTitle) $legendTitle.textContent = viewMode === "total" ? "Total spending (USD)" : "Per-capita spending (USD)";
+        if ($legendTitle) $legendTitle.textContent = viewMode === "total" ? "Total spending (USD)" : "Per-enrollee spending (USD)";
         $legendMin.textContent = "$0";
         $legendMax.textContent = formatCurrency(currentMaxVal);
 
@@ -692,7 +695,7 @@
         var codes = selectedCodes.map(function (c) { return c.code; });
         var qi = currentQuarterIdx;
         var isTotal = viewMode === "total";
-        var modeLabel = isTotal ? "total" : "per_capita";
+        var modeLabel = isTotal ? "total" : "per_enrollee";
 
         // Build rows: only counties with data for at least one selected code
         var rows = [];
@@ -731,7 +734,7 @@
         }
 
         // Assemble CSV
-        var header = ["county_fips", "county_name", "state", "population"];
+        var header = ["county_fips", "county_name", "state", "medicaid_enrollment"];
         for (var j = 0; j < codes.length; j++) {
             header.push(codes[j]);
         }

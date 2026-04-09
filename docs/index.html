@@ -40,14 +40,14 @@
         <div class="control-group">
             <label>View</label>
             <div id="view-toggle" class="view-toggle">
-                <button class="view-btn active" data-mode="percapita">Per capita</button>
+                <button class="view-btn active" data-mode="percapita">Per enrollee</button>
                 <button class="view-btn" data-mode="total">Total</button>
             </div>
         </div>
 
         <!-- Legend -->
         <div id="legend" class="hidden">
-            <div class="legend-title">Per-capita spending (USD)</div>
+            <div class="legend-title">Per-enrollee spending (USD)</div>
             <div class="legend-bar">
                 <div id="legend-gradient"></div>
                 <div class="legend-labels">
@@ -85,7 +85,7 @@
     <!-- Attribution -->
     <div id="attribution">
         Data: <a href="https://opendata.hhs.gov/datasets/medicaid-provider-spending/" target="_blank">HHS/CMS</a>
-        | Population: U.S. Census Bureau
+        | Enrollment: <a href="https://data.census.gov/table/ACSDT5Y2023.C27007" target="_blank">ACS</a>
         | <a href="#" id="methodology-link">Methodology</a>
     </div>
 
@@ -189,7 +189,7 @@
                 <p>Unmapped rows are structurally different from mapped rows:</p>
                 <ul>
                     <li>Unmapped rows average <strong>865 claim lines per row</strong>, compared to 79&ndash;149 for mapped rows. The &ldquo;both NPI empty&rdquo; subset averages ~7,500 claims per row, confirming these are bulk aggregations rather than individual-provider records.</li>
-                    <li>The <code>TOTAL_PAID</code> field in unmapped rows exhibits extreme outliers &mdash; a small number of rows (concentrated in 2018) carry implausibly large dollar values that account for the vast majority of the dataset&rsquo;s nominal dollar total. Because of this, dollar-based statistics for unmapped claims are unreliable and are not reported here. The per-capita spending values shown on the map (derived from mapped claims only) are not affected.</li>
+                    <li>The <code>TOTAL_PAID</code> field in unmapped rows exhibits extreme outliers &mdash; a small number of rows (concentrated in 2018) carry implausibly large dollar values that account for the vast majority of the dataset&rsquo;s nominal dollar total. Because of this, dollar-based statistics for unmapped claims are unreliable and are not reported here. The per-enrollee spending values shown on the map (derived from mapped claims only) are not affected.</li>
                 </ul>
 
                 <h4>Trend Over Time</h4>
@@ -197,10 +197,11 @@
             </section>
 
             <section>
-                <h3>Per-Capita Calculation</h3>
-                <p>Dollar values on the map are <strong>per-capita</strong> amounts, computed as:</p>
-                <div class="formula">Per-capita spending = Total paid in county for code &amp; quarter &divide; County population</div>
-                <p>The <code>TOTAL_PAID</code> field from the spending dataset is summed by county, HCPCS code, and calendar quarter. County population estimates come from the <a href="https://www.census.gov/data/datasets/time-series/demo/popest/2020s-counties-total.html" target="_blank">U.S. Census Bureau&rsquo;s 2024 population estimates</a> (co-est2025-alldata). A single population figure (2024 estimate) is used across all quarters.</p>
+                <h3>Per-Enrollee Calculation</h3>
+                <p>Dollar values on the map are <strong>per-enrollee</strong> amounts, computed as:</p>
+                <div class="formula">Per-enrollee spending = Total paid in county for code &amp; quarter &divide; County Medicaid enrollment</div>
+                <p>The <code>TOTAL_PAID</code> field from the spending dataset is summed by county, HCPCS code, and calendar quarter. County-level Medicaid enrollment counts are derived from the <a href="https://data.census.gov/table/ACSDT5Y2023.C27007" target="_blank">American Community Survey (ACS) 2023 5-year estimates, Table C27007</a> (Medicaid/Means-Tested Public Coverage Status by Sex by Age). The six &ldquo;With Medicaid/means-tested public coverage&rdquo; age-sex subgroups are summed to produce a single enrollment figure per county. A single enrollment figure is used across all quarters (2018&ndash;2024).</p>
+                <p><strong>Note:</strong> The ACS measure includes CHIP and other state means-tested programs alongside Medicaid. Survey-based estimates are known to undercount Medicaid enrollment by roughly 10&ndash;20% compared to administrative records. Total county population from the <a href="https://www.census.gov/data/datasets/time-series/demo/popest/2020s-counties-total.html" target="_blank">Census Bureau&rsquo;s 2024 population estimates</a> is also shown for reference.</p>
             </section>
 
             <section>
@@ -210,7 +211,7 @@
 
             <section>
                 <h3>Color Scale</h3>
-                <p>The choropleth uses a sequential blue color scale with linear interpolation. To prevent extreme outliers from compressing the visible color range, the scale maximum is set at the <strong>98th percentile</strong> of per-capita values across all counties for the selected code and quarter. Counties above this threshold are shown in the darkest blue. Counties with no data for the selected code/quarter are shown in gray.</p>
+                <p>The choropleth uses a sequential blue color scale with linear interpolation. To prevent extreme outliers from compressing the visible color range, the scale maximum is set at the <strong>98th percentile</strong> of per-enrollee values across all counties for the selected code and quarter. Counties above this threshold are shown in the darkest blue. Counties with no data for the selected code/quarter are shown in gray.</p>
             </section>
 
             <section>
@@ -218,7 +219,8 @@
                 <ul>
                     <li>Provider location is used as a proxy for where services were delivered. In some cases (e.g., telehealth, lab services), the provider&rsquo;s registered address may differ from the patient&rsquo;s location.</li>
                     <li>When a ZIP code spans multiple counties, only the county with the largest land-area overlap is used, which may misattribute some spending near county borders.</li>
-                    <li>A fixed 2024 population estimate is used for all quarters (2018&ndash;2024), which does not account for population changes over time.</li>
+                    <li>Medicaid enrollment counts come from ACS survey estimates, which are known to undercount actual enrollment by roughly 10&ndash;20% compared to administrative records. The ACS &ldquo;Medicaid/means-tested public coverage&rdquo; category also includes CHIP and some state-specific programs.</li>
+                    <li>A single ACS 5-year enrollment estimate (2019&ndash;2023) is used across all quarters (2018&ndash;2024), which does not account for enrollment changes over time (e.g., the pandemic-era enrollment surge and subsequent unwinding).</li>
                     <li>11.1% of claims by volume could not be mapped to a county and are excluded. These are predominantly managed care bulk claims without provider NPIs, HCBS waiver services, and non-emergency transportation &mdash; see <em>County Resolution Rate</em> and <em>Profile of Unmapped Claims</em> above for details.</li>
                 </ul>
             </section>

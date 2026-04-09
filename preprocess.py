@@ -4,11 +4,12 @@ Preprocessing pipeline for HHS Medicaid Provider Spending choropleth map.
 Transforms raw spending CSV + reference data into website-ready JSON files.
 
 Steps:
+0. Download ACS Medicaid enrollment by county from Census API (cached)
 1. Extract NPI->ZIP5 from NPPES ZIP (streaming, no full extraction)
 2. Build ZIP5->county FIPS lookup from Census ZCTA crosswalk
 3. Use DuckDB to join spending data with NPI->county mapping,
-   aggregate by county x HCPCS x quarter, compute per-capita values
-4. Identify top 15% HCPCS codes by popularity
+   aggregate by county x HCPCS x quarter, compute per-enrollee values
+4. Identify top 35% HCPCS codes by popularity
 5. Export JSON data files for the website
 """
 
@@ -19,6 +20,7 @@ import io
 import os
 import sys
 import time
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -26,6 +28,40 @@ BASE = Path(__file__).parent
 IN = BASE / "in"
 REF = IN / "ref"
 OUT = BASE / "docs" / "data"
+
+
+def step0_download_acs_medicaid_pop():
+    """Download ACS C27007 Medicaid/means-tested public coverage by county."""
+    output_path = REF / "acs_medicaid_pop.csv"
+    if output_path.exists():
+        size_kb = output_path.stat().st_size / 1024
+        print(f"  [skip] acs_medicaid_pop.csv already exists ({size_kb:.1f} KB)")
+        return
+
+    print("  Downloading ACS 2023 5-year Table C27007 from Census API...")
+    # C27007: Medicaid/Means-Tested Public Coverage by Sex by Age
+    # "With Medicaid" variables by sex and age group:
+    medicaid_vars = "C27007_004E,C27007_007E,C27007_010E,C27007_014E,C27007_017E,C27007_020E"
+    url = f"https://api.census.gov/data/2023/acs/acs5?get=NAME,{medicaid_vars}&for=county:*&in=state:*"
+
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    resp = urllib.request.urlopen(req, timeout=60)
+    data = json.loads(resp.read().decode())
+    print(f"  Received {len(data) - 1} county rows from Census API")
+
+    count = 0
+    with open(output_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["county_fips", "medicaid_pop"])
+        for row in data[1:]:
+            state_code = row[7]
+            county_code = row[8]
+            fips = state_code.zfill(2) + county_code.zfill(3)
+            medicaid_pop = sum(int(v) for v in row[1:7] if v and int(v) >= 0)
+            writer.writerow([fips, medicaid_pop])
+            count += 1
+
+    print(f"  Done: {count} counties saved to acs_medicaid_pop.csv")
 
 
 def step1_extract_npi_zip():
@@ -124,22 +160,35 @@ def step2_build_lookups_and_aggregate(con):
     con.execute("DROP TABLE npi_zip")
     con.execute("DROP TABLE zcta_county")
 
-    # --- County population ---
+    # --- County population (total + Medicaid enrollment) ---
     print("  Loading county population...")
     con.execute(f"""
         CREATE TABLE county_pop AS
         SELECT
-            LPAD(CAST(STATE AS VARCHAR), 2, '0') || LPAD(CAST(COUNTY AS VARCHAR), 3, '0') AS county_fips,
-            CAST(POPESTIMATE2024 AS INTEGER) AS population,
-            CTYNAME AS county_name,
-            STNAME AS state_name
-        FROM read_csv('{REF / "co-est2025-alldata.csv"}',
-            types={{'STATE': 'VARCHAR', 'COUNTY': 'VARCHAR'}},
-            encoding='latin-1')
-        WHERE SUMLEV = '050' AND COUNTY != '000'
+            c.county_fips,
+            c.population,
+            COALESCE(m.medicaid_pop, 0) AS medicaid_pop,
+            c.county_name,
+            c.state_name
+        FROM (
+            SELECT
+                LPAD(CAST(STATE AS VARCHAR), 2, '0') || LPAD(CAST(COUNTY AS VARCHAR), 3, '0') AS county_fips,
+                CAST(POPESTIMATE2024 AS INTEGER) AS population,
+                CTYNAME AS county_name,
+                STNAME AS state_name
+            FROM read_csv('{REF / "co-est2025-alldata.csv"}',
+                types={{'STATE': 'VARCHAR', 'COUNTY': 'VARCHAR'}},
+                encoding='latin-1')
+            WHERE SUMLEV = '050' AND COUNTY != '000'
+        ) c
+        LEFT JOIN (
+            SELECT county_fips, CAST(medicaid_pop AS INTEGER) AS medicaid_pop
+            FROM read_csv('{REF / "acs_medicaid_pop.csv"}',
+                types={{'county_fips': 'VARCHAR', 'medicaid_pop': 'INTEGER'}})
+        ) m ON c.county_fips = m.county_fips
     """)
-    r = con.execute("SELECT COUNT(*), SUM(population) FROM county_pop").fetchone()
-    print(f"    {r[0]:,} counties, total pop {r[1]:,}")
+    r = con.execute("SELECT COUNT(*), SUM(population), SUM(medicaid_pop) FROM county_pop").fetchone()
+    print(f"    {r[0]:,} counties, total pop {r[1]:,}, Medicaid enrollment {r[2]:,}")
 
     # --- Main aggregation: spending CSV -> county x HCPCS x quarter ---
     print("  Aggregating spending data (238M rows, this will take a few minutes)...")
@@ -286,13 +335,13 @@ def step4_export_json(con):
     # --- County population lookup (for the website to show county names) ---
     print("  Exporting county info...")
     county_info = con.execute("""
-        SELECT county_fips, county_name, state_name, population
+        SELECT county_fips, county_name, state_name, medicaid_pop, population
         FROM county_pop
         ORDER BY county_fips
     """).fetchall()
 
     counties_data = {
-        c[0]: {"name": c[1], "state": c[2], "pop": c[3]}
+        c[0]: {"name": c[1], "state": c[2], "pop": c[3], "tpop": c[4]}
         for c in county_info
     }
     with open(OUT / "counties.json", "w") as f:
@@ -312,7 +361,7 @@ def step4_export_json(con):
             s.quarter,
             s.county_fips,
             s.total_paid,
-            p.population
+            p.medicaid_pop
         FROM spending_top s
         JOIN county_pop p ON s.county_fips = p.county_fips
         ORDER BY s.HCPCS_CODE, s.county_fips, s.quarter
@@ -346,7 +395,7 @@ def step4_export_json(con):
             code_data[fips] = [None] * n_quarters
 
         qi = quarter_idx[quarter]
-        # Per-capita: total_paid / population, rounded to 2 decimal places
+        # Per-enrollee: total_paid / medicaid_pop, rounded to 2 decimal places
         if pop and pop > 0:
             per_capita = round(paid / pop, 2)
         else:
@@ -367,18 +416,21 @@ def main():
     print("=" * 60)
     t_start = time.time()
 
-    print("\n[1/4] Extracting NPI->ZIP5 from NPPES...")
+    print("\n[1/5] Downloading ACS Medicaid enrollment data...")
+    step0_download_acs_medicaid_pop()
+
+    print("\n[2/5] Extracting NPI->ZIP5 from NPPES...")
     step1_extract_npi_zip()
 
-    print("\n[2/4] Building lookups and aggregating spending data...")
+    print("\n[3/5] Building lookups and aggregating spending data...")
     con = duckdb.connect()
     con.execute("SET memory_limit = '4GB'")
     step2_build_lookups_and_aggregate(con)
 
-    print("\n[3/4] Loading HCPCS descriptions...")
+    print("\n[4/5] Loading HCPCS descriptions...")
     step3_load_hcpcs_descriptions(con)
 
-    print("\n[4/4] Exporting website JSON files...")
+    print("\n[5/5] Exporting website JSON files...")
     step4_export_json(con)
 
     con.close()
