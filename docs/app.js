@@ -669,9 +669,12 @@
         var $toggle = document.getElementById("panel-toggle");
         if (!$panel || !$toggle) return;
 
-        $toggle.addEventListener("click", function () {
-            $panel.classList.toggle("collapsed");
-        });
+        var $header = document.getElementById("panel-header");
+        if ($header) {
+            $header.addEventListener("click", function () {
+                $panel.classList.toggle("collapsed");
+            });
+        }
     }
 
     // ── CSV Export ──
